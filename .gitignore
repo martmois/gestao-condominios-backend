@@ -1,0 +1,10 @@
+# Dentro do seu arquivo .gitignore
+
+# Ignorar a pasta de dependências do Node
+/node_modules
+
+# Ignorar o arquivo de variáveis de ambiente
+.env
+
+# IGNORAR O ARQUIVO DE CREDENCIAIS DO GOOGLE
+google-credentials.json
