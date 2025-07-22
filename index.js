@@ -12,26 +12,24 @@ import { Storage } from '@google-cloud/storage';
 
 dotenv.config();
 
-// --- Configuração do Servidor ---
 const app = express();
-const PORT = process.env.PORT || 3001; // Usa a porta do ambiente, ou 3001 como padrão
+const PORT = process.env.PORT || 8080;
 app.use(cors());
 app.use(express.json());
 
-
-
-// A chave secreta agora é lida do .env de forma segura
 const JWT_SECRET = process.env.JWT_SECRET;
 
 // Configuração do Multer para upload de arquivos em memória
 const upload = multer({ storage: multer.memoryStorage() });
 
-// A conexão com o banco agora usa as variáveis do .env
-const connection = mysql.createPool({
-  user:     process.env.DB_USER,
-  password: process.env.DB_PASS,
+/// --- LÓGICA DE CONEXÃO COM O BANCO DE DADOS ---
+// Vamos padronizar o nome da nossa variável de conexão para 'pool'
+const pool = await mysql.createPool({
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  socketPath: `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}`,
+  socketPath: process.env.INSTANCE_CONNECTION_NAME ? `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}` : undefined,
+  host: process.env.INSTANCE_CONNECTION_NAME ? undefined : process.env.DB_HOST,
 });
 
 // --- MUDANÇA: CONFIGURAÇÃO DO GOOGLE VISION CLIENT ---
@@ -194,7 +192,7 @@ app.get('/api/condominios', verificarToken, async (req, res) => {
       params = [id]; // Usa o ID do leiturista logado
     }
 
-    const [results] = await db.query(sql, params);
+    const [results] = await pool.query(sql, params);
     res.json(results);
 
   } catch (error) {
@@ -211,7 +209,7 @@ app.post('/api/condominios', async (req, res) => {
       return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
     }
     const sql = 'INSERT INTO condominios (nome, endereco, sindico, tipo_medicao) VALUES (?, ?, ?, ?)';
-    const [results] = await db.query(sql, [nome, endereco, sindico, tipo_medicao]);
+    const [results] = await pool.query(sql, [nome, endereco, sindico, tipo_medicao]);
     res.status(201).json({ id: results.insertId, nome, endereco, sindico, tipo_medicao });
   } catch (error) { /* ... */ }
 });
@@ -221,7 +219,7 @@ app.delete('/api/condominios/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const sql = 'DELETE FROM condominios WHERE id = ?';
-    const [results] = await db.query(sql, [id]);
+    const [results] = await pool.query(sql, [id]);
     if (results.affectedRows === 0) {
       return res.status(404).json({ error: 'Condomínio não encontrado.' });
     }
@@ -242,7 +240,7 @@ app.put('/api/condominios/:id', async (req, res) => {
       return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
     }
     const sql = 'UPDATE condominios SET nome = ?, endereco = ?, sindico = ?, tipo_medicao = ? WHERE id = ?';
-    const [results] = await db.query(sql, [nome, endereco, sindico, tipo_medicao, id]);
+    const [results] = await pool.query(sql, [nome, endereco, sindico, tipo_medicao, id]);
     if (results.affectedRows === 0) {
       return res.status(404).json({ error: 'Condomínio não encontrado.' });
     }
@@ -265,7 +263,7 @@ app.post('/api/usuarios', async (req, res) => {
     const senha_hash = await bcrypt.hash(senha, saltRounds);
 
     const sql = 'INSERT INTO usuarios (nome, email, senha_hash, tipo_usuario) VALUES (?, ?, ?, ?)';
-    const [results] = await db.query(sql, [nome, email, senha_hash, tipo_usuario]);
+    const [results] = await pool.query(sql, [nome, email, senha_hash, tipo_usuario]);
 
     res.status(201).json({ id: results.insertId, nome, email, tipo_usuario });
 
@@ -296,7 +294,7 @@ app.put('/api/usuarios/:id/senha', async (req, res) => {
 
     // Atualizar o hash da senha no banco de dados
     const sql = 'UPDATE usuarios SET senha_hash = ? WHERE id = ?';
-    const [results] = await db.query(sql, [nova_senha_hash, id]);
+    const [results] = await pool.query(sql, [nova_senha_hash, id]);
 
     if (results.affectedRows === 0) {
       return res.status(404).json({ error: 'Usuário não encontrado.' });
@@ -322,7 +320,7 @@ app.post('/api/login', async (req, res) => {
 
     // 1. Encontrar o usuário pelo email
     const sqlFindUser = 'SELECT * FROM usuarios WHERE email = ?';
-    const [users] = await db.query(sqlFindUser, [email]);
+    const [users] = await pool.query(sqlFindUser, [email]);
 
     if (users.length === 0) {
       // Usamos uma mensagem genérica para não informar se o email existe ou não (segurança)
@@ -337,12 +335,8 @@ app.post('/api/login', async (req, res) => {
     }
 
     // 3. Se a senha está correta, gerar o Token JWT
-    const payload = {
-      id: user.id,
-      nome: user.nome,
-      tipo_usuario: user.tipo_usuario
-    };
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' }); // Token expira em 1 hora
+    const payload = { id: user.id, nome: user.nome, tipo_usuario: user.tipo_usuario };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 
     // 4. Enviar o token para o frontend
     res.status(200).json({
@@ -436,7 +430,7 @@ app.get('/api/condominios/:id', async (req, res) => {
       WHERE c.id = ?
       ORDER BY b.nome_bloco, u.andar, u.identificador_unidade;
     `;
-    const [rows] = await db.query(sql, [id]);
+    const [rows] = await pool.query(sql, [id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Condomínio não encontrado.' });
     
     // Processa os dados para um formato aninhado
@@ -486,7 +480,7 @@ app.get('/api/unidades/:id', async (req, res) => {
       JOIN condominios c ON b.condominio_id = c.id
       WHERE u.id = ?;
     `;
-    const [unidadeResult] = await db.query(sqlUnidade, [id]);
+    const [unidadeResult] = await pool.query(sqlUnidade, [id]);
 
     if (unidadeResult.length === 0) {
       return res.status(404).json({ error: 'Unidade não encontrada.' });
@@ -502,7 +496,7 @@ app.get('/api/unidades/:id', async (req, res) => {
       WHERE l.unidade_id = ?
       ORDER BY l.data_leitura DESC;
     `;
-    const [leiturasResult] = await db.query(sqlLeituras, [id]);
+    const [leiturasResult] = await pool.query(sqlLeituras, [id]);
 
     // Combina os resultados em um único objeto de resposta
     const responseData = {
@@ -523,7 +517,7 @@ app.get('/api/blocos/:id/unidades', verificarToken, async (req, res) => {
   try {
     const { id } = req.params; // ID do Bloco
     const sql = 'SELECT id, identificador_unidade, andar FROM unidades WHERE bloco_id = ?';
-    const [unidades] = await db.query(sql, [id]);
+    const [unidades] = await pool.query(sql, [id]);
     res.json(unidades);
   } catch (error) {
     console.error('Erro ao buscar unidades do bloco:', error);
@@ -540,7 +534,7 @@ app.get('/api/faturas', async (req, res) => {
     }
 
     const sql = 'SELECT * FROM faturas_gerais WHERE condominio_id = ? AND ano = ? AND mes = ?';
-    const [results] = await db.query(sql, [condominioId, ano, mes]);
+    const [results] = await pool.query(sql, [condominioId, ano, mes]);
 
     if (results.length > 0) {
       res.json(results[0]); // Retorna a fatura encontrada
@@ -563,14 +557,14 @@ app.get('/api/relatorios/consumo', async (req, res) => {
     }
 
     // 2. Busca a configuração do condomínio (tipo de medição)
-    const [condominioConfig] = await db.query('SELECT tipo_medicao FROM condominios WHERE id = ?', [condominioId]);
+    const [condominioConfig] = await pool.query('SELECT tipo_medicao FROM condominios WHERE id = ?', [condominioId]);
     if (condominioConfig.length === 0) {
       return res.status(404).json({ error: 'Condomínio não encontrado.' });
     }
     const { tipo_medicao } = condominioConfig[0];
 
     // NOVO: 3. Obter o consumo total do condomínio da fatura geral 
-    const [faturaCondominioResult] = await db.query(
+    const [faturaCondominioResult] = await pool.query(
       'SELECT consumo_total_m3 FROM faturas_gerais WHERE condominio_id = ? AND ano = ? AND mes = ?',
       [condominioId, ano, mes]
     );
@@ -582,7 +576,7 @@ app.get('/api/relatorios/consumo', async (req, res) => {
     const consumoTotalCondominio = faturaCondominioResult[0].consumo_total_m3; // 
 
     // NOVO: 4. Obter o número total de unidades do condomínio
-    const [unidadesNoCondominioResult] = await db.query(`
+    const [unidadesNoCondominioResult] = await pool.query(`
       SELECT COUNT(u.id) AS total_unidades
       FROM unidades u
       JOIN blocos b ON u.bloco_id = b.id
@@ -643,7 +637,7 @@ app.get('/api/relatorios/consumo', async (req, res) => {
       JOIN blocos b ON u.bloco_id = b.id
       WHERE b.condominio_id = ?
     `;
-    const [results] = await db.query(sql, [periodoAtual, periodoAnterior, condominioId]);
+    const [results] = await pool.query(sql, [periodoAtual, periodoAnterior, condominioId]);
 
     // 8. Mapeia os resultados e aplica a lógica de cálculo de tarifa CAESB corrigida 
     const reportComValores = results.map(row => {
@@ -726,7 +720,7 @@ app.post('/api/faturas', async (req, res) => {
         valor_total_fatura = VALUES(valor_total_fatura);
     `;
 
-    await db.query(sql, [
+    await pool.query(sql, [
       condominio_id, mes, ano, consumo_total_m3,
       valor_variavel_agua, valor_fixa_agua,
       valor_esgoto, valor_total_fatura
@@ -760,7 +754,7 @@ app.post('/api/leituras', verificarToken, async (req, res) => {
       VALUES (?, ?, ?, ?, NOW(), ?, ?)
     `;
 
-    await db.query(sql, [
+    await pool.query(sql, [
       unidade_id, 
       leitura_agua_fria, 
       leitura_agua_quente, 
