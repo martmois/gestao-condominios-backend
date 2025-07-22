@@ -12,11 +12,31 @@ import { Storage } from '@google-cloud/storage';
 
 dotenv.config();
 
-// --- Configuração do Servidor ---
 const app = express();
-const PORT = process.env.PORT || 3001; // Usa a porta do ambiente, ou 3001 como padrão
+const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
+
+const JWT_SECRET = process.env.JWT_SECRET;
+const upload = multer({ storage: multer.memoryStorage() });
+
+// --- MUDANÇA: LÓGICA DE CONEXÃO INTELIGENTE COM O BANCO DE DADOS ---
+const dbConfig = {
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+};
+
+// Quando rodando no Google Cloud Run, ele nos dá esta variável de ambiente.
+// Usamos ela para nos conectar de forma segura através de um "socket".
+if (process.env.INSTANCE_CONNECTION_NAME) {
+  dbConfig.socketPath = `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}`;
+} else {
+  // Se não estivermos na nuvem, usamos o host normal para desenvolvimento local.
+  dbConfig.host = process.env.DB_HOST;
+}
+
+const db = await mysql.createPool(dbConfig);
 
 // --- MUDANÇA: CONFIGURAÇÃO DO GOOGLE VISION CLIENT ---
 // O cliente agora é inicializado com o caminho do segredo montado no Cloud Run.
@@ -24,19 +44,6 @@ const visionClient = new vision.ImageAnnotatorClient({
   keyFilename: '/etc/secrets/google-credentials.json' // Aponta para o caminho seguro
 });
 
-// A chave secreta agora é lida do .env de forma segura
-const JWT_SECRET = process.env.JWT_SECRET;
-
-// Configuração do Multer para upload de arquivos em memória
-const upload = multer({ storage: multer.memoryStorage() });
-
-// A conexão com o banco agora usa as variáveis do .env
-const db = await mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME
-});
 
 // Tarifa fixa em uma constante, pois ela é universal.
 const TARIFA_FIXA_AGUA = 11.18;
