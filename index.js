@@ -18,8 +18,10 @@ const PORT = process.env.PORT || 3001; // Usa a porta do ambiente, ou 3001 como 
 app.use(cors());
 app.use(express.json());
 
+// --- MUDANÇA: CONFIGURAÇÃO DO GOOGLE VISION CLIENT ---
+// O cliente agora é inicializado com o caminho do segredo montado no Cloud Run.
 const visionClient = new vision.ImageAnnotatorClient({
-  keyFilename: 'google-credentials.json' // Aponta para o nosso arquivo de chave
+  keyFilename: '/etc/secrets/google-credentials.json' // Aponta para o caminho seguro
 });
 
 // A chave secreta agora é lida do .env de forma segura
