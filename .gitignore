@@ -8,3 +8,4 @@
 
 # IGNORAR O ARQUIVO DE CREDENCIAIS DO GOOGLE
 google-credentials.json
+google-credentials-run.json

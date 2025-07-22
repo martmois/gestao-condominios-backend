@@ -1,20 +1,20 @@
-# Usar uma imagem oficial do Node.js
-FROM node:18-slim
+# Dockerfile
+FROM node:22-alpine
 
-# Definir o diretório de trabalho dentro do container
+# Diretório de trabalho dentro do container
 WORKDIR /usr/src/app
 
-# Copiar os arquivos de manifesto do projeto
+# Copia apenas package.json e package-lock.json para acelerar o cache
 COPY package*.json ./
 
-# Instalar as dependências da aplicação
-RUN npm install --omit=dev
+# Instala só dependências de produção
+RUN npm ci --omit=dev
 
-# Copiar o resto do código-fonte da aplicação
+# Copia o restante do código
 COPY . .
 
-# Expor a porta que o Cloud Run usará
-EXPOSE 8080
+# Expõe a porta que o Express vai usar
+ENV PORT=8080
 
-# Comando para iniciar a aplicação
-CMD [ "node", "index.js" ]
+# Comando padrão para iniciar
+CMD ["node", "index.js"]
