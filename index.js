@@ -363,7 +363,7 @@ app.post('/api/condominios/:id/importar', upload.single('arquivo'), async (req, 
   // Usamos uma transação para garantir a integridade dos dados
   let connection;
   try {
-    connection = await db.getConnection();
+    connection = await pool.getConnection();
     await connection.beginTransaction();
 
     // Lê o buffer do arquivo enviado com a biblioteca xlsx
