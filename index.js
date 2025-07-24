@@ -9,8 +9,10 @@ import xlsx from 'xlsx';
 import vision from '@google-cloud/vision';
 import { Storage } from '@google-cloud/storage';
 
-
 dotenv.config();
+
+// Ambos lendo o mesmo arquivo montado:
+const credentialPath = '/etc/secrets/google-credentials.json';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -35,7 +37,7 @@ const pool = await mysql.createPool({
 // --- MUDANÇA: CONFIGURAÇÃO DO GOOGLE VISION CLIENT ---
 // O cliente agora é inicializado com o caminho do segredo montado no Cloud Run.
 const visionClient = new vision.ImageAnnotatorClient({
-  keyFilename: '/etc/secrets/google-credentials.json' // Aponta para o caminho seguro
+  keyFilename: credentialPath
 });
 
 
@@ -138,7 +140,7 @@ const verificarToken = (req, res, next) => {
 };
 
 // Inicialize o cliente do Cloud Storage (ele usará o mesmo google-credentials.json)
-const storage = new Storage({ keyFilename: 'google-credentials.json' });
+const storage = new Storage({ keyFilename: credentialPath });
 const bucketName = 'meu-app-hidrometros-fotos'; // <-- Substitua pelo nome do seu bucket
 const bucket = storage.bucket(bucketName);
 

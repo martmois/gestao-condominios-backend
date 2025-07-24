@@ -13,6 +13,9 @@ RUN npm ci --omit=dev
 # Copia o restante do código
 COPY . .
 
+# Define a variável que o SDK do Google vai ler
+ENV GOOGLE_APPLICATION_CREDENTIALS=/etc/secrets/google-credentials.json
+
 # Expõe a porta que o Express vai usar
 ENV PORT=8080
 
