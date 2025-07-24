@@ -12,9 +12,8 @@ steps:
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
-      [
-        '-c',
-        |
+      - '-c'
+      - |
         gcloud run deploy hidro-backend \
           --image gcr.io/$PROJECT_ID/hidro-backend \
           --region southamerica-east1 \
@@ -23,7 +22,7 @@ steps:
           --add-cloudsql-instances=$PROJECT_ID:southamerica-east1:hidrometros-instance \
           --set-secrets="GOOGLE_APPLICATION_CREDENTIALS=google-credentials:latest,JWT_SECRET=jwt-secret:latest" \
           --set-env-vars="DB_HOST=127.0.0.1,DB_USER=root,DB_PASSWORD=$DB_PASSWORD,DB_NAME=hidrometros_db,INSTANCE_CONNECTION_NAME=$PROJECT_ID:southamerica-east1:hidrometros-instance"
-      ]
+      
 # Imagem que queremos armazenar no Container Registry
 images:
   - 'gcr.io/$PROJECT_ID/hidro-backend'
