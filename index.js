@@ -789,7 +789,7 @@ app.post('/api/ocr/analisar-imagem', verificarToken, upload.single('imagem'), as
         unidadeId, 
         identificadorUnidade, 
         tipoLeitura,
-        blocoId, // embora não usado no nome diretamente, pode ser útil
+        nomeBloco, // embora não usado no nome diretamente, pode ser útil
         condominioNome
     } = req.body;
 
@@ -805,11 +805,11 @@ app.post('/api/ocr/analisar-imagem', verificarToken, upload.single('imagem'), as
 
     // Sanitizar o nome do condomínio para uso em nome de arquivo
     const sanitizedCondominioNome = condominioNome ? condominioNome.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30) : 'cond'; // Limita a 30 caracteres
-    const sanitizedBlocoId = blocoId ? `bl${blocoId}` : 'bl_na'; // Exemplo de abreviação
+    const sanitizedBlocoNome = nomeBloco ? `${nomeBloco}` : 'bl_na'; // Exemplo de abreviação
 
     // Construir o nome do arquivo
     // Exemplo: MAISON_UNID101_ANDAR1_FRIO_20250719_103045.jpg
-    const filename = `${sanitizedCondominioNome}_BL${sanitizedBlocoId}_UNID${identificadorUnidade}_${tipoLeitura.toUpperCase()}_${dateFormatted}.jpg`;
+    const filename = `${sanitizedCondominioNome}_BL${sanitizedBlocoNome}_UNID${identificadorUnidade}_${tipoLeitura.toUpperCase()}_${dateFormatted}.jpg`;
     
     const imageUrl = await uploadImageToGCS(content, filename);
 
