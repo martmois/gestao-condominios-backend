@@ -26,8 +26,6 @@ availableSecrets:
   secretManager:
     - versionName: projects/$PROJECT_ID/secrets/db-password/versions/latest
       env: DB_PASSWORD
-    - versionName: projects/$PROJECT_ID/secrets/google-credentials/versions/latest
-      env: GOOGLE_APPLICATION_CREDENTIALS_JSON
 
 options:
   logging: CLOUD_LOGGING_ONLY
