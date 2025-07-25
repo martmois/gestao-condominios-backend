@@ -17,7 +17,7 @@ steps:
           --allow-unauthenticated \
           --add-cloudsql-instances=$PROJECT_ID:us-central1:hidrometros-instance \
           --set-secrets="/etc/secrets/google-credentials.json=google-credentials:latest" \
-          --set-env-vars="DB_USER=root,DB_PASSWORD=$$DB_PASSWORD,DB_NAME=hidrometros_db,INSTANCE_CONNECTION_NAME=$PROJECT_ID:us-central1:hidrometros-instance,DB_HOST=127.0.0.1"
+          --set-env-vars="DB_HOST=127.0.0.1,DB_USER=root,DB_PASSWORD=$$DB_PASSWORD,DB_NAME=hidrometros_db,INSTANCE_CONNECTION_NAME=$PROJECT_ID:us-central1:hidrometros-instance"
 
 images:
   - 'gcr.io/$PROJECT_ID/hidro-backend'
