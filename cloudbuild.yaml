@@ -6,6 +6,7 @@ steps:
   # 2) Deploy no Cloud Run
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
+    secretEnv: ['DB_PASSWORD']
     args:
       - '-c'
       - |
