@@ -822,7 +822,7 @@ app.post('/api/ocr/analisar-imagem', verificarToken, upload.single('imagem'), as
 
     const textoCompleto = detections[0].description;
     const numerosEncontrados = textoCompleto.match(/\d+/g)?.join('') || '';
-    const leitura = numerosEncontrados.substring(0, 5);
+    const leitura = numerosEncontrados.substring(0, 4);
 
     if (!leitura) {
         return res.status(404).json({ error: 'Nenhum número de leitura válido foi identificado.', imageUrl: imageUrl });
