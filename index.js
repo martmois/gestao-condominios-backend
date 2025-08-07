@@ -473,49 +473,64 @@ app.get('/api/condominios/:id', verificarToken, async (req, res) => {
 
 // ROTA PARA BUSCAR DETALHES DE UMA UNIDADE E SUAS LEITURAS
 // =================================================================
-app.get('/api/unidades/:id', verificarToken, async (req, res) => {
+app.get('/api/unidades/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    // Query 1: Busca os detalhes da unidade (sem alterações)
-    const sqlUnidade = `
-      SELECT
-        u.id as unidade_id, u.identificador_unidade, u.andar,
-        b.id as bloco_id, b.nome_bloco,
-        c.id as condominio_id, c.nome as condominio_nome
-      FROM unidades u
-      JOIN blocos b ON u.bloco_id = b.id
-      JOIN condominios c ON b.condominio_id = c.id
-      WHERE u.id = ?;
-    `;
-    const [unidadeResult] = await pool.query(sqlUnidade, [id]);
+    // Consulta para trazer dados da unidade e suas leituras, incluindo URLs de fotos
+    const [rows] = await db.execute(
+      `SELECT u.id AS unidade_id,
+              u.identificador_unidade,
+              u.nome_bloco,
+              u.condominio_id,
+              c.nome AS condominio_nome,
+              l.id AS leitura_id,
+              l.leitura_agua_fria,
+              l.leitura_agua_quente,
+              l.foto_fria_url,
+              l.foto_quente_url,
+              l.data_leitura,
+              le.nome AS leiturista_nome
+       FROM unidades u
+       JOIN condominios c ON c.id = u.condominio_id
+       LEFT JOIN leituras l ON l.unidade_id = u.id
+       LEFT JOIN leituristas le ON l.leiturista_id = le.id
+       WHERE u.id = ?
+       ORDER BY l.data_leitura DESC`,
+      [id]
+    );
 
-    if (unidadeResult.length === 0) {
-      return res.status(404).json({ error: 'Unidade não encontrada.' });
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Unidade não encontrada.' });
     }
 
-    // <-- MUDANÇA AQUI: A query agora também seleciona 'foto_fria_url' e 'foto_quente_url'
-    const sqlLeituras = `
-      SELECT
-        l.id as leitura_id, l.leitura_agua_fria, l.leitura_agua_quente, l.data_leitura,
-        l.foto_fria_url, l.foto_quente_url,
-        usr.nome as leiturista_nome
-      FROM leituras l
-      JOIN usuarios usr ON l.leiturista_id = usr.id
-      WHERE l.unidade_id = ?
-      ORDER BY l.data_leitura DESC;
-    `;
-    const [leiturasResult] = await pool.query(sqlLeituras, [id]);
+    // Extrai dados da unidade (primeira linha)
+    const { condominio_id, condominio_nome, identificador_unidade, nome_bloco } = rows[0];
 
-    const responseData = {
-      ...unidadeResult[0],
-      leituras: leiturasResult,
-    };
+    // Mapeia leituras incluindo foto URLs
+    const leituras = rows
+      .filter(r => r.leitura_id !== null)
+      .map(r => ({
+        leitura_id: r.leitura_id,
+        leitura_agua_fria: r.leitura_agua_fria,
+        leitura_agua_quente: r.leitura_agua_quente,
+        foto_fria_url: r.foto_fria_url,
+        foto_quente_url: r.foto_quente_url,
+        data_leitura: r.data_leitura,
+        leiturista_nome: r.leiturista_nome
+      }));
 
-    res.json(responseData);
-
+    // Retorna JSON com metadados da unidade e lista de leituras
+    return res.json({
+      unidade_id: Number(id),
+      condominio_id,
+      condominio_nome,
+      identificador_unidade,
+      nome_bloco,
+      leituras
+    });
   } catch (error) {
-    console.error('Erro ao buscar detalhes da unidade:', error);
-    res.status(500).json({ error: 'Erro ao buscar dados.' });
+    console.error('Erro ao buscar unidade:', error);
+    return res.status(500).json({ message: 'Erro interno no servidor.' });
   }
 });
 
