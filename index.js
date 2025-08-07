@@ -478,24 +478,25 @@ app.get('/api/unidades/:id', async (req, res) => {
   try {
     // Consulta para trazer dados da unidade e suas leituras, incluindo URLs de fotos
     const [rows] = await db.execute(
-      `SELECT u.id AS unidade_id,
-              u.identificador_unidade,
-              u.nome_bloco,
-              u.condominio_id,
-              c.nome AS condominio_nome,
-              l.id AS leitura_id,
-              l.leitura_agua_fria,
-              l.leitura_agua_quente,
-              l.foto_fria_url,
-              l.foto_quente_url,
-              l.data_leitura,
-              le.nome AS leiturista_nome
-       FROM unidades u
-       JOIN condominios c ON c.id = u.condominio_id
-       LEFT JOIN leituras l ON l.unidade_id = u.id
-       LEFT JOIN leituristas le ON l.leiturista_id = le.id
-       WHERE u.id = ?
-       ORDER BY l.data_leitura DESC`,
+      `SELECT
+          u.id                 AS unidade_id,
+          u.identificador_unidade,
+          u.nome_bloco,
+          u.condominio_id,
+          c.nome               AS condominio_nome,
+          l.id                 AS leitura_id,
+          l.leitura_agua_fria,
+          l.leitura_agua_quente,
+          l.foto_fria_url,
+          l.foto_quente_url,
+          l.data_leitura,
+          le.nome              AS leiturista_nome
+      FROM unidades u
+      JOIN condominios c   ON c.id = u.condominio_id
+      LEFT JOIN leituras l ON l.unidade_id = u.id
+      LEFT JOIN leituristas le ON le.id = l.leiturista_id
+      WHERE u.id = ?
+      ORDER BY l.data_leitura DESC`,
       [id]
     );
 
@@ -508,26 +509,25 @@ app.get('/api/unidades/:id', async (req, res) => {
 
     // Mapeia leituras incluindo foto URLs
     const leituras = rows
-      .filter(r => r.leitura_id !== null)
-      .map(r => ({
-        leitura_id: r.leitura_id,
-        leitura_agua_fria: r.leitura_agua_fria,
-        leitura_agua_quente: r.leitura_agua_quente,
-        foto_fria_url: r.foto_fria_url,
-        foto_quente_url: r.foto_quente_url,
-        data_leitura: r.data_leitura,
-        leiturista_nome: r.leiturista_nome
-      }));
+    .filter(r => r.leitura_id !== null)
+    .map(r => ({
+      leitura_id: r.leitura_id,
+      leitura_agua_fria: r.leitura_agua_fria,
+      leitura_agua_quente: r.leitura_agua_quente,
+      foto_fria_url: r.foto_fria_url || null,
+      foto_quente_url: r.foto_quente_url || null,
+      data_leitura: r.data_leitura,
+      leiturista_nome: r.leiturista_nome
+    }));
 
-    // Retorna JSON com metadados da unidade e lista de leituras
-    return res.json({
-      unidade_id: Number(id),
-      condominio_id,
-      condominio_nome,
-      identificador_unidade,
-      nome_bloco,
-      leituras
-    });
+  return res.json({
+    unidade_id: Number(id),
+    identificador_unidade: rows[0]?.identificador_unidade,
+    nome_bloco: rows[0]?.nome_bloco,
+    condominio_id: rows[0]?.condominio_id,
+    condominio_nome: rows[0]?.condominio_nome,
+    leituras
+  });
   } catch (error) {
     console.error('Erro ao buscar unidade:', error);
     return res.status(500).json({ message: 'Erro interno no servidor.' });
