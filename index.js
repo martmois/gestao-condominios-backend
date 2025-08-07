@@ -418,9 +418,10 @@ app.post('/api/condominios/:id/importar', upload.single('arquivo'), async (req, 
 
 
 // <-- ROTA PARA BUSCAR DETALHES DE UM CONDOMÍNIO
-app.get('/api/condominios/:id', async (req, res) => {
+app.get('/api/condominios/:id', verificarToken, async (req, res) => {
   const { id } = req.params;
   try {
+    // A query SQL busca tudo de uma vez, usando JOINs
     const sql = `
       SELECT
         c.id as condominio_id, c.nome as condominio_nome, c.endereco, c.sindico, c.tipo_medicao,
@@ -430,10 +431,14 @@ app.get('/api/condominios/:id', async (req, res) => {
       LEFT JOIN blocos b ON c.id = b.condominio_id
       LEFT JOIN unidades u ON b.id = u.bloco_id
       WHERE c.id = ?
-      ORDER BY b.nome_bloco, u.andar, u.identificador_unidade;
+      -- MUDANÇA AQUI: Adicionamos LENGTH() para uma ordenação natural
+      ORDER BY b.nome_bloco, u.andar, LENGTH(u.identificador_unidade), u.identificador_unidade;
     `;
-    const [rows] = await pool.query(sql, [id]);
-    if (rows.length === 0) return res.status(404).json({ error: 'Condomínio não encontrado.' });
+    const [rows] = await db.query(sql, [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Condomínio não encontrado.' });
+    }
     
     // Processa os dados para um formato aninhado
     const condominioDetails = {
