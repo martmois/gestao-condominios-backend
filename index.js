@@ -468,10 +468,10 @@ app.get('/api/condominios/:id', async (req, res) => {
 
 // ROTA PARA BUSCAR DETALHES DE UMA UNIDADE E SUAS LEITURAS
 // =================================================================
-app.get('/api/unidades/:id', async (req, res) => {
+app.get('/api/unidades/:id', verificarToken, async (req, res) => {
   const { id } = req.params;
   try {
-    // Query 1: Busca os detalhes da unidade e sua hierarquia (bloco, condomínio)
+    // Query 1: Busca os detalhes da unidade (sem alterações)
     const sqlUnidade = `
       SELECT
         u.id as unidade_id, u.identificador_unidade, u.andar,
@@ -488,10 +488,11 @@ app.get('/api/unidades/:id', async (req, res) => {
       return res.status(404).json({ error: 'Unidade não encontrada.' });
     }
 
-    // Query 2: Busca o histórico de leituras para essa unidade
+    // <-- MUDANÇA AQUI: A query agora também seleciona 'foto_fria_url' e 'foto_quente_url'
     const sqlLeituras = `
       SELECT
         l.id as leitura_id, l.leitura_agua_fria, l.leitura_agua_quente, l.data_leitura,
+        l.foto_fria_url, l.foto_quente_url,
         usr.nome as leiturista_nome
       FROM leituras l
       JOIN usuarios usr ON l.leiturista_id = usr.id
@@ -500,7 +501,6 @@ app.get('/api/unidades/:id', async (req, res) => {
     `;
     const [leiturasResult] = await pool.query(sqlLeituras, [id]);
 
-    // Combina os resultados em um único objeto de resposta
     const responseData = {
       ...unidadeResult[0],
       leituras: leiturasResult,
@@ -805,7 +805,7 @@ app.post('/api/ocr/analisar-imagem', verificarToken, upload.single('imagem'), as
 
     // Sanitizar o nome do condomínio para uso em nome de arquivo
     const sanitizedCondominioNome = condominioNome ? condominioNome.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30) : 'cond'; // Limita a 30 caracteres
-    const sanitizedBlocoNome = nomeBloco ? `${nomeBloco}` : 'bl_na'; // Exemplo de abreviação
+    const sanitizedBlocoNome = nomeBloco ? `bl${nomeBloco}` : 'bl_na'; // Exemplo de abreviação
 
     // Construir o nome do arquivo
     // Exemplo: MAISON_UNID101_ANDAR1_FRIO_20250719_103045.jpg
