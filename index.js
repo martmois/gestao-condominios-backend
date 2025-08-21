@@ -125,14 +125,11 @@ function calcularValorAgua(consumo, maxFaixaCondominioM3) {
 function verificarToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Token não fornecido.' });
 
-  if (!token) {
-    return res.status(401).json({ message: 'Token não fornecido.' });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) return res.status(401).json({ message: 'Token inválido.' });
-    req.usuario = decoded; // <- ESSENCIAL
+  jwt.verify(token, process.env.JWT_SECRET, (err, usuario) => {
+    if (err) return res.status(403).json({ error: 'Token inválido.' });
+    req.usuario = usuario; // <===== ESSENCIAL!!!
     next();
   });
 }
@@ -419,7 +416,6 @@ app.post('/api/condominios/:id/importar', upload.single('arquivo'), async (req, 
 app.get('/api/condominios/:id', verificarToken, async (req, res) => {
   const { id } = req.params;
   try {
-    const { tipo_usuario, id } = req.usuario;
     // A query SQL busca tudo de uma vez, usando JOINs
     const sql = `
       SELECT
