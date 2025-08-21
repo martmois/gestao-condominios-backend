@@ -9,6 +9,7 @@ import xlsx from 'xlsx';
 import vision from '@google-cloud/vision';
 import { Storage } from '@google-cloud/storage';
 
+
 dotenv.config();
 
 // Ambos lendo o mesmo arquivo montado:
