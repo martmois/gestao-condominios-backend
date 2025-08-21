@@ -18,7 +18,6 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 app.use(cors());
 app.use(express.json());
-const mysql = require('mysql2/promise');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -31,10 +30,8 @@ const pool = await mysql.createPool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  // Use socketPath quando INSTANCE_CONNECTION_NAME estiver definido (ambiente de produção)
-  ...(process.env.INSTANCE_CONNECTION_NAME
-    ? { socketPath: `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}` }
-    : { host: process.env.DB_HOST }) // Caso esteja rodando localmente
+  socketPath: process.env.INSTANCE_CONNECTION_NAME ? `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}` : undefined,
+  host: process.env.INSTANCE_CONNECTION_NAME ? undefined : process.env.DB_HOST,
 });
 
 // --- MUDANÇA: CONFIGURAÇÃO DO GOOGLE VISION CLIENT ---
