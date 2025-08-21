@@ -122,22 +122,20 @@ function calcularValorAgua(consumo, maxFaixaCondominioM3) {
 
 // <-- MUDANÇA: NOSSO NOVO MIDDLEWARE "PORTEIRO"
 // =================================================================
-const verificarToken = (req, res, next) => {
+function verificarToken(req, res, next) {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Formato "Bearer TOKEN"
+  const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.sendStatus(401); // Não autorizado, sem token
+    return res.status(401).json({ message: 'Token não fornecido.' });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, usuario) => {
-    if (err) {
-      return res.sendStatus(403); // Proibido, token inválido ou expirado
-    }
-    req.usuario = usuario; // Adiciona os dados do usuário (id, nome, tipo) ao objeto da requisição
-    next(); // Passa para o próximo passo (a lógica da rota)
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) return res.status(401).json({ message: 'Token inválido.' });
+    req.usuario = decoded; // <- ESSENCIAL
+    next();
   });
-};
+}
 
 // Inicialize o cliente do Cloud Storage (ele usará o mesmo google-credentials.json)
 const storage = new Storage({ keyFilename: credentialPath });
