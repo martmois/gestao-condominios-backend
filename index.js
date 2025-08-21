@@ -120,25 +120,6 @@ function calcularValorAgua(consumo, maxFaixaCondominioM3) {
     return valorVariavel + TARIFA_FIXA_AGUA;
 }
 
-// <-- MUDANÇA: NOSSO NOVO MIDDLEWARE "PORTEIRO"
-// =================================================================
-const verificarToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Formato "Bearer TOKEN"
-
-  if (!token) {
-    return res.sendStatus(401); // Não autorizado, sem token
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, usuario) => {
-    if (err) {
-      return res.sendStatus(403); // Proibido, token inválido ou expirado
-    }
-    req.usuario = usuario; // Adiciona os dados do usuário (id, nome, tipo) ao objeto da requisição
-    next(); // Passa para o próximo passo (a lógica da rota)
-  });
-};
-
 // Inicialize o cliente do Cloud Storage (ele usará o mesmo google-credentials.json)
 const storage = new Storage({ keyFilename: credentialPath });
 const bucketName = 'meu-app-hidrometros-fotos'; // <-- Substitua pelo nome do seu bucket
@@ -172,7 +153,7 @@ app.get('/', (req, res) => {
 // --- ROTAS PARA O GERENCIAMENTO DE CONDOMÍNIOS ---
 
 // GET: Listar todos os condomínios
-app.get('/api/condominios', verificarToken, async (req, res) => {
+app.get('/api/condominios', async (req, res) => {
   try {
     const { tipo_usuario, id } = req.usuario; // Pega os dados do usuário do token decodificado
 
@@ -418,7 +399,7 @@ app.post('/api/condominios/:id/importar', upload.single('arquivo'), async (req, 
 
 
 // <-- ROTA PARA BUSCAR DETALHES DE UM CONDOMÍNIO
-app.get('/api/condominios/:id', verificarToken, async (req, res) => {
+app.get('/api/condominios/:id', async (req, res) => {
   const { id } = req.params;
   try {
     // A query SQL busca tudo de uma vez, usando JOINs
@@ -536,7 +517,7 @@ app.get('/api/unidades/:id', async (req, res) => {
 });
 
 // <-- ROTA PARA BUSCAR AS UNIDADES DE UM BLOCO ESPECÍFICO
-app.get('/api/blocos/:id/unidades', verificarToken, async (req, res) => {
+app.get('/api/blocos/:id/unidades', async (req, res) => {
   try {
     const { id } = req.params; // ID do Bloco
     const sql = 'SELECT id, identificador_unidade, andar FROM unidades WHERE bloco_id = ?';
@@ -757,7 +738,7 @@ app.post('/api/faturas', async (req, res) => {
 });
 
 // <-- ROTA PARA SALVAR UMA LEITURA (POST)
-app.post('/api/leituras', verificarToken, async (req, res) => {
+app.post('/api/leituras', async (req, res) => {
   try {
     const { 
       unidade_id, 
@@ -797,7 +778,7 @@ app.post('/api/leituras', verificarToken, async (req, res) => {
 
 
 // ROTA POST para OCR (agora com upload)
-app.post('/api/ocr/analisar-imagem', verificarToken, upload.single('imagem'), async (req, res) => {
+app.post('/api/ocr/analisar-imagem', upload.single('imagem'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'Nenhuma imagem enviada.' });
   }
