@@ -435,7 +435,7 @@ app.get('/api/condominios/:id', verificarToken, async (req, res) => {
       -- MUDANÇA AQUI: Adicionamos LENGTH() para uma ordenação natural
       ORDER BY b.nome_bloco, u.andar, LENGTH(u.identificador_unidade), u.identificador_unidade;
     `;
-    const [rows] = await db.query(sql, [id]);
+    const [rows] = await pool.query(sql, [id]);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Condomínio não encontrado.' });
@@ -478,7 +478,7 @@ app.get('/api/unidades/:id', async (req, res) => {
   const { id } = req.params;
   try {
     // Consulta para trazer dados da unidade e suas leituras, incluindo URLs de fotos
-    const [rows] = await db.execute(
+    const [rows] = await pool.execute(
       `SELECT
           u.id                 AS unidade_id,
           u.identificador_unidade,
