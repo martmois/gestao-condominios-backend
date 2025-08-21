@@ -19,5 +19,7 @@ ENV GOOGLE_APPLICATION_CREDENTIALS=/etc/secrets/google-credentials.json
 # Expõe a porta que o Express vai usar
 ENV PORT=8080
 
+EXPOSE 8080
+
 # Comando padrão para iniciar
 CMD ["node", "index.js"]
