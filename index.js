@@ -30,7 +30,8 @@ const pool = await mysql.createPool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  socketPath: `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}`,
+  socketPath: process.env.INSTANCE_CONNECTION_NAME ? `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}` : undefined,
+  host: process.env.INSTANCE_CONNECTION_NAME ? undefined : process.env.DB_HOST,
 });
 
 // --- MUDANÇA: CONFIGURAÇÃO DO GOOGLE VISION CLIENT ---
@@ -121,17 +122,22 @@ function calcularValorAgua(consumo, maxFaixaCondominioM3) {
 
 // <-- MUDANÇA: NOSSO NOVO MIDDLEWARE "PORTEIRO"
 // =================================================================
-function verificarToken(req, res, next) {
+const verificarToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Token não fornecido.' });
+  const token = authHeader && authHeader.split(' ')[1]; // Formato "Bearer TOKEN"
+
+  if (!token) {
+    return res.sendStatus(401); // Não autorizado, sem token
+  }
 
   jwt.verify(token, process.env.JWT_SECRET, (err, usuario) => {
-    if (err) return res.status(403).json({ error: 'Token inválido.' });
-    req.usuario = usuario; // <===== ESSENCIAL!!!
-    next();
+    if (err) {
+      return res.sendStatus(403); // Proibido, token inválido ou expirado
+    }
+    req.usuario = usuario; // Adiciona os dados do usuário (id, nome, tipo) ao objeto da requisição
+    next(); // Passa para o próximo passo (a lógica da rota)
   });
-}
+};
 
 // Inicialize o cliente do Cloud Storage (ele usará o mesmo google-credentials.json)
 const storage = new Storage({ keyFilename: credentialPath });
