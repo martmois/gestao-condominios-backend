@@ -419,6 +419,7 @@ app.post('/api/condominios/:id/importar', upload.single('arquivo'), async (req, 
 app.get('/api/condominios/:id', verificarToken, async (req, res) => {
   const { id } = req.params;
   try {
+    const { tipo_usuario, id } = req.usuario;
     // A query SQL busca tudo de uma vez, usando JOINs
     const sql = `
       SELECT
